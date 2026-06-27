@@ -19,14 +19,16 @@ export default function AdminShell({ title, children }: { title: string; childre
   const session = getAdminSession();
 
   return (
-    <div className="min-h-screen bg-slate-50 text-slate-900">
-      <div className="mx-auto flex min-h-screen max-w-[1400px] flex-col lg:flex-row">
-        <aside className="border-r border-slate-200 bg-white px-6 py-8 lg:w-72">
-          <div className="mb-10 flex items-center gap-3">
-            <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-rose-400 text-xl font-semibold text-white shadow-sm">F</div>
+    <div className="min-h-screen bg-background text-foreground">
+      <div className="mx-auto flex min-h-screen max-w-[1400px] flex-col gap-6 px-4 py-6 lg:flex-row lg:px-8">
+        <aside className="sticky top-6 rounded-[2rem] border border-silver-soft bg-surface p-8 shadow-sm lg:h-fit lg:w-80">
+          <div className="mb-10 flex items-center gap-4">
+            <div className="flex h-12 w-12 items-center justify-center rounded-3xl bg-accent text-lg font-semibold text-background shadow-sm">
+              F
+            </div>
             <div>
-              <p className="text-sm uppercase tracking-[0.24em] text-slate-500">Flower Admin</p>
-              <p className="text-lg font-semibold text-slate-900">Quản trị</p>
+              <p className="text-xs uppercase tracking-[0.25em] text-accent">Flower Admin</p>
+              <p className="text-lg font-semibold text-foreground">Quản trị</p>
             </div>
           </div>
 
@@ -37,7 +39,11 @@ export default function AdminShell({ title, children }: { title: string; childre
                 <Link
                   key={item.href}
                   href={item.href}
-                  className={`block rounded-2xl px-4 py-3 text-sm font-medium transition ${active ? "bg-slate-900 text-white" : "text-slate-700 hover:bg-slate-100"}`}
+                  className={`block rounded-3xl px-4 py-3 text-sm font-medium transition ${
+                    active
+                      ? "bg-accent text-background"
+                      : "text-muted hover:bg-background hover:text-foreground"
+                  }`}
                 >
                   {item.label}
                 </Link>
@@ -45,17 +51,17 @@ export default function AdminShell({ title, children }: { title: string; childre
             })}
           </nav>
 
-          <div className="mt-10 rounded-2xl border border-slate-200 bg-slate-50 p-4 text-sm text-slate-700">
-            <p className="font-semibold text-slate-900">Tài khoản</p>
-            <p>{session?.name ?? "Admin"}</p>
-            <p className="mt-1 text-xs text-slate-500">{session?.email ?? "admin@shop.com"}</p>
+          <div className="mt-10 rounded-[2rem] border border-silver-soft bg-background p-5 text-sm text-muted">
+            <p className="font-semibold text-foreground">Tài khoản</p>
+            <p className="mt-2 text-base text-foreground">{session?.name ?? "Admin"}</p>
+            <p className="mt-1 text-xs text-muted">{session?.email ?? "admin@shop.com"}</p>
             <div className="mt-4">
               <button
                 onClick={() => {
                   clearAdminSession();
                   router.push("/admin/login");
                 }}
-                className="inline-flex items-center rounded-full bg-rose-500 px-3 py-2 text-sm font-semibold text-white hover:bg-rose-600"
+                className="inline-flex items-center rounded-full bg-accent px-3 py-2 text-sm font-semibold text-background transition hover:bg-accent-hover"
               >
                 Đăng xuất
               </button>
@@ -63,15 +69,18 @@ export default function AdminShell({ title, children }: { title: string; childre
           </div>
         </aside>
 
-        <main className="flex-1 p-6 lg:p-10">
-          <div className="mb-6 flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
-            <div>
-              <p className="text-sm uppercase tracking-[0.24em] text-slate-500">Bảng</p>
-              <h1 className="mt-2 text-3xl font-semibold text-slate-900">{title}</h1>
+        <main className="flex-1">
+          <div className="rounded-[2rem] border border-silver-soft bg-surface p-8 shadow-sm">
+            <div className="max-w-2xl">
+              <p className="text-xs uppercase tracking-[0.25em] text-accent">Bảng điều khiển</p>
+              <h1 className="mt-3 text-4xl font-serif font-semibold text-foreground">{title}</h1>
+              <p className="mt-4 text-sm leading-7 text-muted">
+                Quản lý nội dung cửa hàng, hình ảnh, bình luận và cài đặt một cách trực quan.
+              </p>
             </div>
           </div>
 
-          {children}
+          <div className="mt-6">{children}</div>
         </main>
       </div>
     </div>
