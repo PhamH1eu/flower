@@ -2,17 +2,20 @@
 
 import { useState } from "react";
 import { useTranslations } from "next-intl";
+import { Turnstile } from "./Turnstile";
 
 type Status = "idle" | "submitting" | "done";
 
 export function CommentForm() {
   const t = useTranslations("commentsPage.form");
   const [status, setStatus] = useState<Status>("idle");
+  const [captchaToken, setCaptchaToken] = useState("");
 
   const onSubmit = (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
-    // TODO: POST to Lambda (verify CAPTCHA → write to DynamoDB).
-    // For now this is a front-end-only placeholder.
+    if (!captchaToken) return;
+    // TODO: createComment({ name, email, content, captchaToken }) → Lambda
+    // verifies the token and writes to DynamoDB. Front-end-only for now.
     setStatus("submitting");
     setTimeout(() => setStatus("done"), 600);
   };
@@ -71,14 +74,17 @@ export function CommentForm() {
         </Field>
       </div>
 
-      {/* CAPTCHA placeholder — wire to hCaptcha/Turnstile, verified by Lambda. */}
-      <div className="mt-5 flex h-16 items-center justify-center rounded-sm border border-dashed border-silver text-xs uppercase tracking-[0.18em] text-muted">
-        {t("captcha")}
+      {/* Cloudflare Turnstile — token verified server-side (Lambda) before write. */}
+      <div className="mt-5">
+        <Turnstile
+          onVerify={setCaptchaToken}
+          onExpire={() => setCaptchaToken("")}
+        />
       </div>
 
       <button
         type="submit"
-        disabled={status === "submitting"}
+        disabled={status === "submitting" || !captchaToken}
         className="mt-6 rounded-sm bg-foreground px-7 py-3 text-sm tracking-wide text-background transition-colors hover:bg-accent-hover disabled:opacity-60"
       >
         {status === "submitting" ? t("submitting") : t("submit")}

@@ -193,5 +193,16 @@
       "title": "Liên hệ",
       "description": "Địa chỉ, giờ mở cửa và chỉ đường đến cửa hàng hoa tại Berlin."
     }
+  },
+  "legal": {
+    "eyebrow": "Pháp lý",
+    "draftNotice": "Bản nháp — vui lòng điền thông tin cửa hàng và nhờ luật sư rà soát. Các chỗ cần điền được đánh dấu trong nội dung.",
+    "impressum": { "title": "Thông tin pháp lý" },
+    "datenschutz": { "title": "Chính sách bảo mật" }
+  },
+  "notFound": {
+    "title": "Không tìm thấy trang",
+    "body": "Trang bạn tìm không tồn tại hoặc đã được di chuyển.",
+    "cta": "Về trang chủ"
   }
 }

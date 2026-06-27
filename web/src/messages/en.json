@@ -193,5 +193,16 @@
       "title": "Contact",
       "description": "Address, opening hours and directions to our flower shop in Berlin."
     }
+  },
+  "legal": {
+    "eyebrow": "Legal",
+    "draftNotice": "Draft — please complete with the shop's details and have it reviewed by a lawyer. Placeholders are marked in the text.",
+    "impressum": { "title": "Imprint" },
+    "datenschutz": { "title": "Privacy Policy" }
+  },
+  "notFound": {
+    "title": "Page not found",
+    "body": "The page you are looking for doesn't exist or has moved.",
+    "cta": "Back to home"
   }
 }

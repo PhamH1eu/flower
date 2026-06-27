@@ -193,5 +193,16 @@
       "title": "Kontakt",
       "description": "Adresse, Öffnungszeiten und Anfahrt zu unserem Blumengeschäft in Berlin."
     }
+  },
+  "legal": {
+    "eyebrow": "Rechtliches",
+    "draftNotice": "Entwurf — bitte mit den Angaben des Geschäfts ausfüllen und rechtlich prüfen lassen. Platzhalter sind im Text markiert.",
+    "impressum": { "title": "Impressum" },
+    "datenschutz": { "title": "Datenschutzerklärung" }
+  },
+  "notFound": {
+    "title": "Seite nicht gefunden",
+    "body": "Die gesuchte Seite existiert nicht oder wurde verschoben.",
+    "cta": "Zur Startseite"
   }
 }

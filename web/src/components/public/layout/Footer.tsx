@@ -46,12 +46,12 @@ export function Footer() {
             © {t("year")} Blütenhaus. {t("rights")}
           </p>
           <div className="flex gap-6">
-            <a href="#" className="hover:text-foreground">
+            <Link href="/impressum" className="hover:text-foreground">
               {t("imprint")}
-            </a>
-            <a href="#" className="hover:text-foreground">
+            </Link>
+            <Link href="/datenschutz" className="hover:text-foreground">
               {t("privacy")}
-            </a>
+            </Link>
           </div>
         </div>
       </div>
