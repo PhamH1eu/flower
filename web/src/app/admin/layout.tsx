@@ -1,3 +1,5 @@
+import { AuthProvider } from "@/providers/AuthProvider";
+
 export default function AdminLayout({
   children,
 }: {
@@ -5,7 +7,9 @@ export default function AdminLayout({
 }) {
   return (
     <html lang="en">
-      <body className="bg-slate-50 text-slate-900">{children}</body>
+      <body className="bg-slate-50 text-slate-900">
+        <AuthProvider>{children}</AuthProvider>
+      </body>
     </html>
   );
 }

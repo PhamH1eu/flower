@@ -2,12 +2,10 @@
 
 import { useCallback, useEffect, useState } from 'react';
 import {
-  confirmSignUp,
   fetchAuthSession,
   getCurrentUser,
   signIn,
   signOut,
-  signUp,
   type AuthUser,
 } from 'aws-amplify/auth';
 import '@/lib/amplify-config';
@@ -64,18 +62,6 @@ export function useAuth() {
     return result;
   }
 
-  async function handleSignUp(email: string, password: string) {
-    return signUp({
-      username: email,
-      password,
-      options: { userAttributes: { email } },
-    });
-  }
-
-  async function handleConfirmSignUp(email: string, code: string) {
-    return confirmSignUp({ username: email, confirmationCode: code });
-  }
-
   async function handleSignOut() {
     await signOut();
     setUser(null);
@@ -91,8 +77,6 @@ export function useAuth() {
     loading,
     checkUser,
     signIn: handleSignIn,
-    signUp: handleSignUp,
-    confirmSignUp: handleConfirmSignUp,
     signOut: handleSignOut,
     getAccessToken,
   };
