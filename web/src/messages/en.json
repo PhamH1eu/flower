@@ -100,7 +100,8 @@
     "close": "Close",
     "prev": "Previous",
     "next": "Next",
-    "save": "Save"
+    "save": "Save",
+    "all": "All"
   },
   "commentsPage": {
     "eyebrow": "Reviews",

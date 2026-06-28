@@ -45,6 +45,12 @@ export interface NewComment {
 
 /* -------------------------------- Images -------------------------------- */
 
+/**
+ * Gallery filter categories. "wedding|birthday|funeral" mirror the homepage
+ * occasions; "other" is shop/ambiance photos (shown only under the "All" tab).
+ */
+export type ImageCategory = "wedding" | "birthday" | "funeral" | "other";
+
 /** Image as shown in the public gallery (CloudFront-served WebP). */
 export interface GalleryImage {
   id: string;
@@ -55,6 +61,8 @@ export interface GalleryImage {
   /** Dimensions of the full image. */
   width: number;
   height: number;
+  /** Drives the gallery filter tabs. */
+  category: ImageCategory;
   alt?: string;
 }
 
@@ -83,6 +91,8 @@ export interface UploadUrlResponse {
 export interface RegisterImageRequest {
   imageId: string;
   objectKey: string;
+  /** Chosen by the shop owner in the admin upload form. */
+  category: ImageCategory;
   alt?: string;
 }
 

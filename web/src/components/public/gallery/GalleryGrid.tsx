@@ -1,31 +1,40 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { useTranslations } from "next-intl";
 import { ImageFrame } from "../ui/ImageFrame";
 
-// Placeholder tiles with varied aspect ratios for a Pinterest-style waterfall.
-// Replace with the shop's real photos: each tile becomes a GalleryImage
-// ({ url, thumbUrl, alt }) — grid uses thumbUrl, the lightbox uses url.
-type Tile = { aspect: string; url?: string; alt?: string };
+// Filter tabs map to the shop's occasion categories. "other" images (shop /
+// ambiance) appear only under "all". Keep this in sync with ImageCategory in
+// web/src/lib/api/types.ts and the admin upload category selector.
+const CATEGORIES = ["wedding", "birthday", "funeral"] as const;
+type Category = (typeof CATEGORIES)[number] | "other";
+type Filter = "all" | (typeof CATEGORIES)[number];
 
-const TILES: Tile[] = [
+// Placeholder tiles — replace with real GalleryImage data from GET /images.
+// Grid uses thumbUrl, lightbox uses url. Category drives the filter.
+type Tile = { aspect: string; category: Category; url?: string; alt?: string };
+
+const ASPECTS = [
   "aspect-[3/4]", "aspect-[1/1]", "aspect-[3/5]", "aspect-[4/3]", "aspect-[3/4]",
   "aspect-[4/5]", "aspect-[1/1]", "aspect-[2/3]", "aspect-[4/3]", "aspect-[3/4]",
   "aspect-[3/5]", "aspect-[4/5]", "aspect-[1/1]", "aspect-[4/3]", "aspect-[2/3]",
-].map((aspect) => ({ aspect }));
+];
+const CYCLE: Category[] = ["wedding", "birthday", "funeral", "other"];
+const TILES: Tile[] = ASPECTS.map((aspect, i) => ({
+  aspect,
+  category: CYCLE[i % CYCLE.length],
+}));
 
 async function downloadImage(url: string, filename: string) {
   try {
-    // fetch→blob works cross-origin when CloudFront allows CORS, and forces a
-    // real download regardless of Content-Disposition.
     const res = await fetch(url);
     const blob = await res.blob();
     const href = URL.createObjectURL(blob);
     triggerDownload(href, filename);
     URL.revokeObjectURL(href);
   } catch {
-    triggerDownload(url, filename); // fallback: let the browser handle it
+    triggerDownload(url, filename);
   }
 }
 
@@ -40,13 +49,20 @@ function triggerDownload(href: string, filename: string) {
 
 export function GalleryGrid() {
   const t = useTranslations("galleryPage");
+  const to = useTranslations("occasions");
+  const [filter, setFilter] = useState<Filter>("all");
   const [open, setOpen] = useState<number | null>(null);
+
+  const items = useMemo(
+    () => (filter === "all" ? TILES : TILES.filter((tile) => tile.category === filter)),
+    [filter],
+  );
 
   const close = useCallback(() => setOpen(null), []);
   const show = useCallback(
     (next: number) =>
-      setOpen((i) => ((i ?? 0) + next + TILES.length) % TILES.length),
-    [],
+      setOpen((i) => ((i ?? 0) + next + items.length) % items.length),
+    [items.length],
   );
 
   useEffect(() => {
@@ -64,14 +80,46 @@ export function GalleryGrid() {
     };
   }, [open, close, show]);
 
-  const current = open !== null ? TILES[open] : null;
+  const selectFilter = (f: Filter) => {
+    setOpen(null); // indexes change with the filter
+    setFilter(f);
+  };
+
+  const tabs: { key: Filter; label: string }[] = [
+    { key: "all", label: t("all") },
+    ...CATEGORIES.map((c) => ({ key: c, label: to(`items.${c}.label`) })),
+  ];
+
+  const current = open !== null ? items[open] : null;
 
   return (
     <>
+      {/* Filter tabs */}
+      <div className="mb-10 flex flex-wrap gap-2">
+        {tabs.map((tab) => {
+          const active = filter === tab.key;
+          return (
+            <button
+              key={tab.key}
+              type="button"
+              onClick={() => selectFilter(tab.key)}
+              aria-pressed={active}
+              className={`rounded-full border px-4 py-1.5 text-sm tracking-wide transition-colors ${
+                active
+                  ? "border-foreground bg-foreground text-background"
+                  : "border-silver text-muted hover:border-accent hover:text-foreground"
+              }`}
+            >
+              {tab.label}
+            </button>
+          );
+        })}
+      </div>
+
       <div className="columns-2 gap-4 md:columns-3 lg:columns-4 [&>*]:mb-4">
-        {TILES.map((tile, i) => (
+        {items.map((tile, i) => (
           <button
-            key={i}
+            key={`${filter}-${i}`}
             type="button"
             onClick={() => setOpen(i)}
             aria-label={`${t("imageLabel")} ${i + 1}`}
@@ -90,10 +138,9 @@ export function GalleryGrid() {
           onClick={close}
           className="fixed inset-0 z-[60] flex items-center justify-center bg-foreground/90 p-4 backdrop-blur-sm sm:p-8"
         >
-          {/* Top toolbar: counter + save + close */}
           <div className="absolute inset-x-0 top-0 flex items-center justify-between px-5 py-4">
             <span className="text-sm tabular-nums tracking-wide text-background/70">
-              {open + 1} / {TILES.length}
+              {open + 1} / {items.length}
             </span>
             <div className="flex items-center gap-2">
               <button
@@ -122,7 +169,6 @@ export function GalleryGrid() {
             </div>
           </div>
 
-          {/* Prev */}
           <button
             type="button"
             onClick={(e) => {
@@ -142,7 +188,6 @@ export function GalleryGrid() {
             <ImageFrame label={t("imageLabel")} aspect="aspect-[4/3]" />
           </div>
 
-          {/* Next */}
           <button
             type="button"
             onClick={(e) => {

@@ -31,11 +31,14 @@ Lambda: **verify CAPTCHA** (hCaptcha/Turnstile) → validate định dạng emai
 (không xác minh tồn tại) → ghi DynamoDB → đăng ngay, không duyệt.
 → `201 { "comment": PublicComment }`. CAPTCHA sai → `400 { error.code: "captcha_failed" }`.
 
-### `GET /images?cursor&limit`
+### `GET /images?cursor&limit&category`
 ```jsonc
-{ "items": [ { "id", "url", "thumbUrl", "width", "height", "alt"? } ], "nextCursor": ... }
+{ "items": [ { "id", "url", "thumbUrl", "width", "height",
+              "category": "wedding"|"birthday"|"funeral"|"other", "alt"? } ],
+  "nextCursor": ... }
 ```
 `url` = WebP full (lightbox), `thumbUrl` = WebP thumbnail (grid) — đều là link CloudFront.
+`?category=` (tùy chọn) lọc theo nhóm; bỏ trống = tất cả (tab "All" của gallery).
 
 ## Admin endpoints (Cognito)
 
@@ -47,7 +50,7 @@ Lambda: **verify CAPTCHA** (hCaptcha/Turnstile) → validate định dạng emai
 | DELETE | `/admin/comments/:id` | — | `204` |
 | GET | `/admin/images?cursor&limit` | — | `Paginated<AdminImage>` |
 | POST | `/admin/images/upload-url` | `{ fileName, contentType, size }` | `{ uploadUrl, imageId, objectKey }` |
-| POST | `/admin/images` | `{ imageId, objectKey, alt? }` | `AdminImage` |
+| POST | `/admin/images` | `{ imageId, objectKey, category, alt? }` | `AdminImage` |
 | DELETE | `/admin/images/:id` | — | `204` |
 
 `AdminComment` = `PublicComment` + `{ email, status }`.
@@ -55,9 +58,21 @@ Lambda: **verify CAPTCHA** (hCaptcha/Turnstile) → validate định dạng emai
 ### Flow upload ảnh (3 bước)
 1. `POST /admin/images/upload-url` → nhận presigned URL.
 2. Frontend `PUT` file gốc thẳng lên S3 bằng URL đó.
-3. `POST /admin/images` đăng ký → Lambda sinh bản WebP, lưu metadata vào DynamoDB.
+3. `POST /admin/images` đăng ký (kèm `category`) → Lambda sinh WebP, lưu metadata.
 
 Giới hạn kích thước file enforce ở bước 1 (hiện tài liệu ghi tối đa 5MB/ảnh).
+
+### 📌 NOTE cho teammate — tính năng "Gallery theo category" (FE đã làm tab lọc)
+Gallery công khai giờ có tab lọc: **All / Cưới / Sinh nhật & tiệc / Tang lễ**. Để
+chạy với dữ liệu thật, **backend + admin cần**:
+1. **DynamoDB**: ảnh có thêm thuộc tính `category` ∈ `wedding|birthday|funeral|other`.
+   Nên có **GSI lọc theo category** (vd `GSI2PK = "IMG#<category>"`, SK = `<createdAt>`)
+   để `GET /images?category=` query thẳng, không scan.
+2. **Admin upload**: form `/admin/images` cho chủ shop **chọn category** khi đăng,
+   rồi gửi trong `POST /admin/images` (field `category` — xem `RegisterImageRequest`).
+3. **`GET /images?category=`**: lọc theo category; bỏ trống = trả tất cả.
+4. `image-processor` **không** set category (API Lambda set lúc register); processor
+   chỉ cần giữ nguyên `category` đã có trên row.
 
 ## Ghi chú bảo mật
 - Auth admin frontend dùng AWS Cognito qua Amplify (`lib/adminAuth.ts`); access token Cognito truyền vào tham số `token` của các hàm admin.

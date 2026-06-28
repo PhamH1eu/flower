@@ -2,6 +2,7 @@ import { apiFetch } from "./client";
 import type {
   AdminImage,
   GalleryImage,
+  ImageCategory,
   Paginated,
   RegisterImageRequest,
   UploadUrlRequest,
@@ -11,7 +12,7 @@ import type {
 /* -------------------------------- Public -------------------------------- */
 
 export function listImages(
-  params: { cursor?: string; limit?: number } = {},
+  params: { cursor?: string; limit?: number; category?: ImageCategory } = {},
   signal?: AbortSignal,
 ) {
   return apiFetch<Paginated<GalleryImage>>("/images", { query: params, signal });

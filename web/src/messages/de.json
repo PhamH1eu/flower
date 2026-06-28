@@ -100,7 +100,8 @@
     "close": "Schließen",
     "prev": "Vorheriges",
     "next": "Nächstes",
-    "save": "Speichern"
+    "save": "Speichern",
+    "all": "Alle"
   },
   "commentsPage": {
     "eyebrow": "Bewertungen",
