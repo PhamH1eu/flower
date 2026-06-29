@@ -1,11 +1,44 @@
+"use client";
+
+import { useEffect, useState } from "react";
 import { useTranslations } from "next-intl";
+import { listImages } from "@/lib/api/images";
+import type { GalleryImage, ImageCategory } from "@/lib/api/types";
+import { GalleryPhoto } from "../gallery/GalleryPhoto";
 import { Reveal } from "../ui/Reveal";
-import { ImageFrame } from "../ui/ImageFrame";
 
 const KEYS = ["wedding", "birthday", "funeral"] as const;
 
 export function Occasions() {
   const t = useTranslations("occasions");
+  const [imagesByCategory, setImagesByCategory] = useState<
+    Partial<Record<(typeof KEYS)[number], GalleryImage>>
+  >({});
+
+  useEffect(() => {
+    const controller = new AbortController();
+
+    async function loadImages() {
+      const entries = await Promise.all(
+        KEYS.map(async (category) => {
+          try {
+            const data = await listImages(
+              { category: category as ImageCategory, limit: 1 },
+              controller.signal,
+            );
+            return [category, data.items[0]] as const;
+          } catch {
+            return [category, undefined] as const;
+          }
+        }),
+      );
+
+      setImagesByCategory(Object.fromEntries(entries));
+    }
+
+    void loadImages();
+    return () => controller.abort();
+  }, []);
 
   return (
     <section className="border-t border-silver-soft bg-surface">
@@ -23,7 +56,7 @@ export function Occasions() {
           {KEYS.map((key, i) => (
             <Reveal key={key} delay={i * 120}>
               <article>
-                <ImageFrame label={t(`items.${key}.label`)} hover />
+                <GalleryPhoto image={imagesByCategory[key]} label={t(`items.${key}.label`)} />
                 <h3 className="mt-5 font-serif text-2xl text-foreground">
                   {t(`items.${key}.title`)}
                 </h3>

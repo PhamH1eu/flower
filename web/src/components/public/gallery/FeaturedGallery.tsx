@@ -1,10 +1,28 @@
+"use client";
+
+import { useEffect, useState } from "react";
 import { useTranslations } from "next-intl";
 import { Link } from "@/i18n/navigation";
+import { listImages } from "@/lib/api/images";
+import type { GalleryImage } from "@/lib/api/types";
+import { GalleryPhoto } from "./GalleryPhoto";
 import { Reveal } from "../ui/Reveal";
-import { ImageFrame } from "../ui/ImageFrame";
 
 export function FeaturedGallery() {
   const t = useTranslations("featured");
+  const [images, setImages] = useState<GalleryImage[]>([]);
+
+  useEffect(() => {
+    const controller = new AbortController();
+
+    listImages({ limit: 3 }, controller.signal)
+      .then((data) => setImages(data.items))
+      .catch(() => {
+        setImages([]);
+      });
+
+    return () => controller.abort();
+  }, []);
 
   return (
     <section className="border-t border-silver-soft bg-surface">
@@ -21,10 +39,10 @@ export function FeaturedGallery() {
         <div className="mt-14 grid gap-6 sm:grid-cols-2 md:grid-cols-3">
           {[0, 1, 2].map((i) => (
             <Reveal key={i} delay={i * 120}>
-              <ImageFrame
+              <GalleryPhoto
+                image={images[i]}
                 label={t("imageLabel")}
                 aspect={i === 1 ? "aspect-[3/4]" : "aspect-[4/5]"}
-                hover
               />
             </Reveal>
           ))}
