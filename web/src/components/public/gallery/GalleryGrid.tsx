@@ -6,6 +6,7 @@ import { listImages } from "@/lib/api/images";
 import type { GalleryImage, ImageCategory } from "@/lib/api/types";
 import { ImageFrame } from "../ui/ImageFrame";
 import { Reveal } from "../ui/Reveal";
+import { getGalleryImageLayout, type GalleryImageFit } from "./imageLayout";
 
 // Filter tabs map to the shop's occasion categories. "other" images (shop /
 // ambiance) appear only under "all". Keep this in sync with ImageCategory in
@@ -16,17 +17,12 @@ type Filter = "all" | (typeof CATEGORIES)[number];
 // Grid uses thumbUrl, lightbox uses url.
 type Tile = {
   id: string;
-  aspect: string;
+  aspectRatio: number;
+  fit: GalleryImageFit;
   url?: string;
   thumbUrl?: string;
   alt?: string;
 };
-
-const ASPECTS = [
-  "aspect-[3/4]", "aspect-[1/1]", "aspect-[3/5]", "aspect-[4/3]", "aspect-[3/4]",
-  "aspect-[4/5]", "aspect-[1/1]", "aspect-[2/3]", "aspect-[4/3]", "aspect-[3/4]",
-  "aspect-[3/5]", "aspect-[4/5]", "aspect-[1/1]", "aspect-[4/3]", "aspect-[2/3]",
-];
 
 async function downloadImage(url: string, filename: string) {
   try {
@@ -64,13 +60,17 @@ export function GalleryGrid() {
   const [dir, setDir] = useState<1 | -1>(1); // slide direction on switch
 
   const items = useMemo<Tile[]>(() => {
-    return images.map((image, i) => ({
-      id: image.id,
-      aspect: ASPECTS[i % ASPECTS.length],
-      url: image.url,
-      thumbUrl: image.thumbUrl,
-      alt: image.alt,
-    }));
+    return images.map((image, i) => {
+      const layout = getGalleryImageLayout(image, i);
+      return {
+        id: image.id,
+        aspectRatio: layout.aspectRatio,
+        fit: layout.fit,
+        url: image.url,
+        thumbUrl: image.thumbUrl,
+        alt: image.alt,
+      };
+    });
   }, [images]);
 
   const fetchImages = useCallback(
@@ -214,7 +214,8 @@ export function GalleryGrid() {
                   label={t("imageLabel")}
                   src={tile.thumbUrl}
                   alt={tile.alt || `${t("imageLabel")} ${i + 1}`}
-                  aspect={tile.aspect}
+                  aspectRatio={tile.aspectRatio}
+                  fit={tile.fit}
                   hover
                   flat
                 />

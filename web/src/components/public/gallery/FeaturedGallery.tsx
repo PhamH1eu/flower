@@ -7,6 +7,7 @@ import { listImages } from "@/lib/api/images";
 import type { GalleryImage } from "@/lib/api/types";
 import { Reveal } from "../ui/Reveal";
 import { ImageFrame } from "../ui/ImageFrame";
+import { getGalleryImageLayout } from "./imageLayout";
 
 export function FeaturedGallery() {
   const t = useTranslations("featured");
@@ -46,16 +47,19 @@ export function FeaturedGallery() {
           {slots.map((item, i) => {
             const image = typeof item === "number" ? null : item;
             const key = image ? image.id : `placeholder-${item}`;
+            const layout = image ? getGalleryImageLayout(image, i) : null;
             return (
-            <Reveal key={key} delay={i * 120}>
-              <ImageFrame
-                label={t("imageLabel")}
-                src={image?.thumbUrl}
-                alt={image?.alt || t("imageLabel")}
-                aspect={i === 1 ? "aspect-[3/4]" : "aspect-[4/5]"}
-                hover
-              />
-            </Reveal>
+              <Reveal key={key} delay={i * 120}>
+                <ImageFrame
+                  label={t("imageLabel")}
+                  src={image?.thumbUrl}
+                  alt={image?.alt || t("imageLabel")}
+                  aspect={i === 1 ? "aspect-[3/4]" : "aspect-[4/5]"}
+                  aspectRatio={layout?.aspectRatio}
+                  fit={layout?.fit}
+                  hover
+                />
+              </Reveal>
             );
           })}
         </div>

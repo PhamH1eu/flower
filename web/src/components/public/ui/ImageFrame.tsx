@@ -1,3 +1,5 @@
+import type { CSSProperties } from "react";
+
 type ImageFrameProps = {
   /** Caption shown inside the placeholder until a real photo is added. */
   label?: string;
@@ -5,6 +7,8 @@ type ImageFrameProps = {
   alt?: string;
   /** Tailwind aspect-ratio class, e.g. "aspect-[4/3]". */
   aspect?: string;
+  /** CSS aspect-ratio value for dynamic image dimensions. Overrides aspect. */
+  aspectRatio?: number;
   className?: string;
   /** Enable subtle zoom on hover (for gallery/occasion tiles). */
   hover?: boolean;
@@ -26,11 +30,17 @@ export function ImageFrame({
   src,
   alt = "",
   aspect = "aspect-[4/3]",
+  aspectRatio,
   className = "",
   hover = false,
   fit = "cover",
   flat = false,
 }: ImageFrameProps) {
+  const frameStyle: CSSProperties | undefined = aspectRatio
+    ? { aspectRatio }
+    : undefined;
+  const aspectClass = aspectRatio ? "" : aspect;
+
   return (
     <div
       className={`rounded-lg bg-surface ring-1 ring-silver ${
@@ -38,7 +48,8 @@ export function ImageFrame({
       } ${className}`}
     >
       <div
-        className={`group overflow-hidden ${flat ? "rounded-lg" : "rounded-sm"} ${aspect}`}
+        className={`group overflow-hidden ${flat ? "rounded-lg" : "rounded-sm"} ${aspectClass}`}
+        style={frameStyle}
       >
         {src ? (
           <img
