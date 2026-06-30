@@ -33,6 +33,13 @@ const s3 = new S3Client({ region: REGION });
 
 type CommentStatus = "visible" | "hidden";
 type ImageCategory = "wedding" | "birthday" | "funeral" | "other";
+type LandingImageSlot =
+  | "hero"
+  | "about"
+  | "wedding"
+  | "birthday"
+  | "funeral"
+  | "featured";
 type JsonObject = Record<string, unknown>;
 type ShopSettings = {
   storeName: string;
@@ -49,6 +56,14 @@ const validImageCategories = new Set<ImageCategory>([
   "birthday",
   "funeral",
   "other",
+]);
+const validLandingImageSlots = new Set<LandingImageSlot>([
+  "hero",
+  "about",
+  "wedding",
+  "birthday",
+  "funeral",
+  "featured",
 ]);
 const allowedImageTypes = new Set(["image/jpeg", "image/png", "image/webp"]);
 const defaultShopSettings: ShopSettings = {
@@ -210,6 +225,11 @@ function galleryImage(item: Record<string, any>) {
     width: item.width,
     height: item.height,
     alt: item.alt,
+    landingSlot:
+      typeof item.landingSlot === "string" &&
+      validLandingImageSlots.has(item.landingSlot as LandingImageSlot)
+        ? item.landingSlot
+        : undefined,
   };
 }
 
@@ -245,11 +265,24 @@ async function findItemById(kind: "COMMENT" | "IMAGE", id: string) {
 
 async function queryActiveImages(params: {
   category?: ImageCategory;
+  landingSlot?: LandingImageSlot;
   limit: number;
   cursor?: Record<string, unknown>;
 }) {
   const items: Record<string, any>[] = [];
   let lastKey = params.cursor;
+  const filterParts = ["#s = :active"];
+  const names: Record<string, string> = { "#s": "status" };
+  const values: Record<string, unknown> = {
+    ":pk": params.category ? `IMG#${params.category}` : "IMAGE",
+    ":active": "active",
+  };
+
+  if (params.landingSlot) {
+    filterParts.push("#landingSlot = :landingSlot");
+    names["#landingSlot"] = "landingSlot";
+    values[":landingSlot"] = params.landingSlot;
+  }
 
   do {
     const remaining = params.limit - items.length;
@@ -258,14 +291,9 @@ async function queryActiveImages(params: {
         TableName: TABLE_NAME,
         IndexName: params.category ? "byCategory" : undefined,
         KeyConditionExpression: params.category ? "GSI2PK = :pk" : "PK = :pk",
-        FilterExpression: "#s = :active",
-        ExpressionAttributeNames: {
-          "#s": "status",
-        },
-        ExpressionAttributeValues: {
-          ":pk": params.category ? `IMG#${params.category}` : "IMAGE",
-          ":active": "active",
-        },
+        FilterExpression: filterParts.join(" AND "),
+        ExpressionAttributeNames: names,
+        ExpressionAttributeValues: values,
         Limit: remaining,
         ExclusiveStartKey: lastKey,
         ScanIndexForward: false,
@@ -378,13 +406,18 @@ export const handler = async (event: any) => {
       const limit = Number(query.limit || 12);
       const cursor = parseCursor(query.cursor);
       const category = query.category;
+      const landingSlot = query.landingSlot;
 
       if (category && !validImageCategories.has(category)) {
         return error(400, "invalid_category", "Invalid image category");
       }
+      if (landingSlot && !validLandingImageSlots.has(landingSlot)) {
+        return error(400, "invalid_landing_slot", "Invalid landing image slot");
+      }
 
       const res = await queryActiveImages({
         category: category as ImageCategory | undefined,
+        landingSlot: landingSlot as LandingImageSlot | undefined,
         limit,
         cursor,
       });
@@ -601,10 +634,14 @@ export const handler = async (event: any) => {
       const imageId = bodyString(body, "imageId");
       const objectKey = bodyString(body, "objectKey");
       const category = bodyString(body, "category") as ImageCategory;
+      const landingSlot = bodyString(body, "landingSlot") as LandingImageSlot;
       const alt = bodyString(body, "alt");
 
       if (!imageId || !objectKey || !validImageCategories.has(category)) {
         return error(400, "invalid_image", "Invalid image registration");
+      }
+      if (landingSlot && !validLandingImageSlots.has(landingSlot)) {
+        return error(400, "invalid_landing_slot", "Invalid landing image slot");
       }
 
       const key = imageKeyFromObjectKey(objectKey, imageId);
@@ -623,15 +660,84 @@ export const handler = async (event: any) => {
         ":g": `IMG#${category}`,
         ":t": key.createdAt,
       };
+      const setParts = ["category = :c", "GSI2PK = :g", "GSI2SK = :t"];
+      const removeParts: string[] = [];
+
       if (alt) values[":a"] = alt;
+      if (landingSlot) values[":ls"] = landingSlot;
+
+      if (alt) setParts.push("alt = :a");
+      else removeParts.push("alt");
+
+      if (landingSlot) setParts.push("landingSlot = :ls");
+      else removeParts.push("landingSlot");
 
       const res = await ddb.send(
         new UpdateCommand({
           TableName: TABLE_NAME,
           Key: { PK: key.PK, SK: key.SK },
-          UpdateExpression: alt
-            ? "SET category = :c, alt = :a, GSI2PK = :g, GSI2SK = :t"
-            : "SET category = :c, GSI2PK = :g, GSI2SK = :t REMOVE alt",
+          UpdateExpression: [
+            `SET ${setParts.join(", ")}`,
+            removeParts.length ? `REMOVE ${removeParts.join(", ")}` : "",
+          ]
+            .filter(Boolean)
+            .join(" "),
+          ExpressionAttributeValues: values,
+          ReturnValues: "ALL_NEW",
+        }),
+      );
+
+      return ok(200, adminImage(res.Attributes || {}));
+    }
+
+    if (method === "PATCH" && /^\/admin\/images\/[^/]+$/.test(path)) {
+      const id = path.split("/")[3];
+      const category = bodyString(body, "category") as ImageCategory;
+      const landingSlot = bodyString(body, "landingSlot") as LandingImageSlot;
+      const alt = bodyString(body, "alt");
+
+      if (!validImageCategories.has(category)) {
+        return error(400, "invalid_category", "Invalid image category");
+      }
+      if (landingSlot && !validLandingImageSlots.has(landingSlot)) {
+        return error(400, "invalid_landing_slot", "Invalid landing image slot");
+      }
+
+      const item = await findItemById("IMAGE", id);
+      if (!item) return error(404, "not_found", "Image not found");
+
+      const values: Record<string, unknown> = {
+        ":c": category,
+        ":g": `IMG#${category}`,
+        ":t": item.createdAt ?? String(item.SK).split("#")[0],
+      };
+      const setParts = ["category = :c", "GSI2PK = :g", "GSI2SK = :t"];
+      const removeParts: string[] = [];
+
+      if (alt) {
+        values[":a"] = alt;
+        setParts.push("alt = :a");
+      } else {
+        removeParts.push("alt");
+      }
+
+      if (landingSlot) {
+        values[":ls"] = landingSlot;
+        setParts.push("landingSlot = :ls");
+      } else {
+        removeParts.push("landingSlot");
+      }
+
+      const res = await ddb.send(
+        new UpdateCommand({
+          TableName: TABLE_NAME,
+          Key: { PK: item.PK, SK: item.SK },
+          UpdateExpression: [
+            `SET ${setParts.join(", ")}`,
+            removeParts.length ? `REMOVE ${removeParts.join(", ")}` : "",
+          ]
+            .filter(Boolean)
+            .join(" "),
           ExpressionAttributeValues: values,
           ReturnValues: "ALL_NEW",
         }),

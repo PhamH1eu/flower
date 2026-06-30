@@ -3,8 +3,10 @@ import type {
   AdminImage,
   GalleryImage,
   ImageCategory,
+  LandingImageSlot,
   Paginated,
   RegisterImageRequest,
+  UpdateImageRequest,
   UploadUrlRequest,
   UploadUrlResponse,
 } from "./types";
@@ -12,7 +14,12 @@ import type {
 /* -------------------------------- Public -------------------------------- */
 
 export function listImages(
-  params: { cursor?: string; limit?: number; category?: ImageCategory } = {},
+  params: {
+    cursor?: string;
+    limit?: number;
+    category?: ImageCategory;
+    landingSlot?: LandingImageSlot;
+  } = {},
   signal?: AbortSignal,
 ) {
   return apiFetch<Paginated<GalleryImage>>("/images", { query: params, signal });
@@ -57,6 +64,14 @@ export async function uploadToS3(
 export function registerImage(token: string, input: RegisterImageRequest) {
   return apiFetch<AdminImage>("/admin/images", {
     method: "POST",
+    body: input,
+    token,
+  });
+}
+
+export function updateImage(token: string, id: string, input: UpdateImageRequest) {
+  return apiFetch<AdminImage>(`/admin/images/${id}`, {
+    method: "PATCH",
     body: input,
     token,
   });

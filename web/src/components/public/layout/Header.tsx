@@ -29,7 +29,7 @@ export function Header() {
       className={`fixed inset-x-0 top-0 z-50 transition-colors duration-300 ${
         scrolled
           ? "border-b border-silver-soft bg-background/90 backdrop-blur"
-          : "border-b border-transparent"
+          : "border-b border-silver-soft/60 bg-background/78 backdrop-blur"
       }`}
     >
       <div className="mx-auto flex max-w-6xl items-center justify-between px-6 py-5">

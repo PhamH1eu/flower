@@ -10,15 +10,25 @@ import {
   reprocessImage,
   registerImage,
   requestUploadUrl,
+  updateImage,
   uploadToS3,
 } from "@/lib/api/images";
-import type { AdminImage, ImageCategory } from "@/lib/api/types";
+import type { AdminImage, ImageCategory, LandingImageSlot } from "@/lib/api/types";
 
 const categories: { value: ImageCategory; label: string }[] = [
   { value: "wedding", label: "Đám cưới" },
   { value: "birthday", label: "Sinh nhật" },
   { value: "funeral", label: "Tang lễ" },
   { value: "other", label: "Khác" },
+];
+const landingSlots: { value: "" | LandingImageSlot; label: string }[] = [
+  { value: "", label: "Chỉ trong gallery" },
+  { value: "hero", label: "Hero trang chủ" },
+  { value: "about", label: "Ảnh giới thiệu cửa hàng" },
+  { value: "wedding", label: "Landing: đám cưới" },
+  { value: "birthday", label: "Landing: sinh nhật/tiệc" },
+  { value: "funeral", label: "Landing: tang lễ" },
+  { value: "featured", label: "Ảnh nổi bật trang chủ" },
 ];
 
 function formatBytes(value: number) {
@@ -42,13 +52,25 @@ export default function AdminImagesPage() {
   const [images, setImages] = useState<AdminImage[]>([]);
   const [selectedFiles, setSelectedFiles] = useState<File[]>([]);
   const [category, setCategory] = useState<ImageCategory>("wedding");
+  const [landingSlot, setLandingSlot] = useState<"" | LandingImageSlot>("");
   const [alt, setAlt] = useState("");
+  const [drafts, setDrafts] = useState<
+    Record<
+      string,
+      {
+        category: ImageCategory;
+        landingSlot: "" | LandingImageSlot;
+        alt: string;
+      }
+    >
+  >({});
   const [message, setMessage] = useState("");
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(true);
   const [uploading, setUploading] = useState(false);
   const [deletingId, setDeletingId] = useState<string | null>(null);
   const [reprocessingId, setReprocessingId] = useState<string | null>(null);
+  const [savingId, setSavingId] = useState<string | null>(null);
 
   const processingCount = useMemo(
     () => images.filter((item) => item.status !== "active" || !item.url || !item.thumbUrl).length,
@@ -119,12 +141,14 @@ export default function AdminImagesPage() {
           imageId: upload.imageId,
           objectKey: upload.objectKey,
           category,
+          landingSlot: landingSlot || undefined,
           alt: alt.trim() || file.name,
         });
       }
 
       setSelectedFiles([]);
       setAlt("");
+      setLandingSlot("");
       setMessage(
         `Đã tải lên ${selectedFiles.length} ảnh. Ảnh sẽ xuất hiện công khai sau khi bộ xử lý tạo WebP xong.`,
       );
@@ -175,6 +199,68 @@ export default function AdminImagesPage() {
     }
   };
 
+  const draftFor = (image: AdminImage) =>
+    drafts[image.id] ?? {
+      category: image.category,
+      landingSlot: image.landingSlot ?? "",
+      alt: image.alt ?? "",
+    };
+
+  const updateDraft = (
+    id: string,
+    patch: Partial<{
+      category: ImageCategory;
+      landingSlot: "" | LandingImageSlot;
+      alt: string;
+    }>,
+  ) => {
+    const image = images.find((item) => item.id === id);
+    if (!image) return;
+    setDrafts((current) => ({
+      ...current,
+      [id]: {
+        ...(current[id] ?? {
+          category: image.category,
+          landingSlot: image.landingSlot ?? "",
+          alt: image.alt ?? "",
+        }),
+        ...patch,
+      },
+    }));
+  };
+
+  const handleSaveMetadata = async (image: AdminImage) => {
+    if (!token) {
+      setError("Phiên đăng nhập admin không hợp lệ.");
+      return;
+    }
+
+    const draft = draftFor(image);
+    setSavingId(image.id);
+    setError("");
+    setMessage("");
+    try {
+      const updated = await updateImage(token, image.id, {
+        category: draft.category,
+        landingSlot: draft.landingSlot || undefined,
+        alt: draft.alt.trim() || undefined,
+      });
+      setImages((current) =>
+        current.map((item) => (item.id === updated.id ? updated : item)),
+      );
+      setDrafts((current) => {
+        const next = { ...current };
+        delete next[image.id];
+        return next;
+      });
+      setMessage("Metadata ảnh đã được cập nhật.");
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Không cập nhật được metadata ảnh.");
+    } finally {
+      setSavingId(null);
+    }
+  };
+
   return (
     <AdminGuard>
       <AdminShell title="Quản lý hình ảnh">
@@ -217,6 +303,22 @@ export default function AdminImagesPage() {
                   >
                     {categories.map((item) => (
                       <option key={item.value} value={item.value}>
+                        {item.label}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+                <label className="mt-4 block text-sm font-medium text-slate-700">
+                  Vị trí landing
+                  <select
+                    value={landingSlot}
+                    onChange={(event) =>
+                      setLandingSlot(event.target.value as "" | LandingImageSlot)
+                    }
+                    className="mt-2 w-full rounded-3xl border border-slate-200 bg-white px-4 py-3 text-sm text-slate-900 outline-none"
+                  >
+                    {landingSlots.map((item) => (
+                      <option key={item.value || "gallery"} value={item.value}>
                         {item.label}
                       </option>
                     ))}
@@ -280,6 +382,7 @@ export default function AdminImagesPage() {
             <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
               {images.map((image) => {
                 const isProcessing = image.status !== "active" || !image.url || !image.thumbUrl;
+                const draft = draftFor(image);
                 return (
                   <article key={image.id} className="overflow-hidden rounded-3xl border border-slate-200 bg-slate-50 shadow-sm">
                     {isProcessing ? (
@@ -298,12 +401,73 @@ export default function AdminImagesPage() {
                             {formatDate(image.createdAt)} · {formatBytes(image.sizeBytes)}
                           </p>
                           <p className="mt-1 text-xs text-slate-500">{image.category}</p>
+                          {image.landingSlot ? (
+                            <p className="mt-1 text-xs font-semibold text-slate-700">
+                              Landing: {landingSlots.find((item) => item.value === image.landingSlot)?.label ?? image.landingSlot}
+                            </p>
+                          ) : null}
                         </div>
                         <span className="rounded-full bg-slate-900 px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.18em] text-white">
                           {image.status === "failed" ? "Lỗi" : isProcessing ? "Xử lý" : "Hoạt động"}
                         </span>
                       </div>
+                      <div className="mb-4 grid gap-3 rounded-2xl border border-slate-200 bg-white p-3">
+                        <label className="block text-xs font-semibold text-slate-600">
+                          Mô tả
+                          <input
+                            value={draft.alt}
+                            onChange={(event) =>
+                              updateDraft(image.id, { alt: event.target.value })
+                            }
+                            className="mt-1 w-full rounded-2xl border border-slate-200 px-3 py-2 text-sm text-slate-900 outline-none"
+                          />
+                        </label>
+                        <label className="block text-xs font-semibold text-slate-600">
+                          Danh mục
+                          <select
+                            value={draft.category}
+                            onChange={(event) =>
+                              updateDraft(image.id, {
+                                category: event.target.value as ImageCategory,
+                              })
+                            }
+                            className="mt-1 w-full rounded-2xl border border-slate-200 px-3 py-2 text-sm text-slate-900 outline-none"
+                          >
+                            {categories.map((item) => (
+                              <option key={item.value} value={item.value}>
+                                {item.label}
+                              </option>
+                            ))}
+                          </select>
+                        </label>
+                        <label className="block text-xs font-semibold text-slate-600">
+                          Vị trí landing
+                          <select
+                            value={draft.landingSlot}
+                            onChange={(event) =>
+                              updateDraft(image.id, {
+                                landingSlot: event.target.value as "" | LandingImageSlot,
+                              })
+                            }
+                            className="mt-1 w-full rounded-2xl border border-slate-200 px-3 py-2 text-sm text-slate-900 outline-none"
+                          >
+                            {landingSlots.map((item) => (
+                              <option key={item.value || "gallery"} value={item.value}>
+                                {item.label}
+                              </option>
+                            ))}
+                          </select>
+                        </label>
+                      </div>
                       <div className="flex flex-wrap gap-2">
+                        <button
+                          type="button"
+                          onClick={() => handleSaveMetadata(image)}
+                          disabled={savingId === image.id}
+                          className="inline-flex items-center rounded-full bg-slate-900 px-4 py-2 text-sm font-semibold text-white transition hover:bg-slate-700 disabled:cursor-not-allowed disabled:opacity-60"
+                        >
+                          {savingId === image.id ? "Đang lưu..." : "Lưu metadata"}
+                        </button>
                         {isProcessing ? (
                           <button
                             type="button"

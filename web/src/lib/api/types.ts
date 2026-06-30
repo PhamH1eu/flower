@@ -50,6 +50,13 @@ export interface NewComment {
  * occasions; "other" is shop/ambiance photos (shown only under the "All" tab).
  */
 export type ImageCategory = "wedding" | "birthday" | "funeral" | "other";
+export type LandingImageSlot =
+  | "hero"
+  | "about"
+  | "wedding"
+  | "birthday"
+  | "funeral"
+  | "featured";
 
 /** Image as shown in the public gallery (CloudFront-served WebP). */
 export interface GalleryImage {
@@ -63,6 +70,8 @@ export interface GalleryImage {
   height: number;
   /** Drives the gallery filter tabs. */
   category: ImageCategory;
+  /** Optional curated placement for landing-page image slots. */
+  landingSlot?: LandingImageSlot;
   alt?: string;
 }
 
@@ -94,6 +103,14 @@ export interface RegisterImageRequest {
   objectKey: string;
   /** Chosen by the shop owner in the admin upload form. */
   category: ImageCategory;
+  /** Optional curated landing placement. */
+  landingSlot?: LandingImageSlot;
+  alt?: string;
+}
+
+export interface UpdateImageRequest {
+  category: ImageCategory;
+  landingSlot?: LandingImageSlot;
   alt?: string;
 }
 

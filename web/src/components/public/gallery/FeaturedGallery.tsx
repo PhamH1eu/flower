@@ -15,8 +15,15 @@ export function FeaturedGallery() {
   useEffect(() => {
     const controller = new AbortController();
 
-    listImages({ limit: 3 }, controller.signal)
-      .then((data) => setImages(data.items))
+    listImages({ landingSlot: "featured", limit: 3 }, controller.signal)
+      .then(async (data) => {
+        if (data.items.length > 0) {
+          setImages(data.items);
+          return;
+        }
+        const fallback = await listImages({ limit: 3 }, controller.signal);
+        setImages(fallback.items);
+      })
       .catch(() => {
         setImages([]);
       });

@@ -1,12 +1,16 @@
 "use client";
 
+import { useEffect, useState } from "react";
 import { useTranslations } from "next-intl";
 import { useShopSettings } from "@/hooks/useShopSettings";
+import type { GalleryImage } from "@/lib/api/types";
+import { EditorialImage } from "../gallery/EditorialImage";
+import { loadLandingImage } from "../gallery/landingImages";
 import { Reveal } from "../ui/Reveal";
-import { ImageFrame } from "../ui/ImageFrame";
 
 export function About() {
   const t = useTranslations("about");
+  const [image, setImage] = useState<GalleryImage>();
   const settings = useShopSettings({
     storeName: "Tường Vi Flower",
     phone: t("hotline"),
@@ -16,11 +20,26 @@ export function About() {
     locale: "vi",
   });
 
+  useEffect(() => {
+    const controller = new AbortController();
+
+    loadLandingImage("about", { category: "other", latest: true }, controller.signal).then(
+      setImage,
+    );
+
+    return () => controller.abort();
+  }, []);
+
   return (
     <section className="mx-auto max-w-6xl px-6 py-20 md:py-28">
       <div className="grid items-center gap-12 md:grid-cols-2 md:gap-16">
         <Reveal className="md:order-2">
-          <ImageFrame label={t("imageLabel")} aspect="aspect-[4/3]" />
+          <EditorialImage
+            image={image}
+            label={t("imageLabel")}
+            aspect="aspect-[4/3]"
+            className="rounded-sm"
+          />
         </Reveal>
 
         <Reveal delay={120} className="md:order-1">
